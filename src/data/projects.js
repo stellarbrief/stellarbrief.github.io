@@ -47,7 +47,7 @@ export const projects = [
     name: 'Advisory Brief',
     tagline: 'What does this advisory or release mean for us?',
     summary:
-      'Turns Stellar release notes and advisories into plain-language briefs for non-engineers. Every claim must carry a quote, and code checks that the quote appears in the source text.',
+      'Turns Stellar release notes and advisories into plain-language briefs for non-engineers. Each claim cites a quote that code checks against the source text, or is marked unknown when the source does not say.',
     audience: 'Operations, product and compliance readers',
     needsDocker: false,
     status: 'Experimental',
