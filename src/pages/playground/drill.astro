@@ -1,0 +1,274 @@
+---
+import Base from '../../layouts/Base.astro';
+import Provenance from '../../components/Provenance.astro';
+import { fromSampleProvenance } from '../../lib/provenance.js';
+import { descriptionFromYaml, expectationFromYaml, framesFromTimeline } from '../../lib/drill.js';
+import { loadManifest, readSynced, readSyncedJson, shortSha } from '../../lib/synced.js';
+
+const REPO = 'upgrade-drill';
+const sha = (await loadManifest()).repos[REPO].sha;
+
+const provenanceFile = await readSyncedJson(REPO, 'docs/samples/provenance.json');
+const provenance = fromSampleProvenance(provenanceFile, 'drill samples');
+
+const names = ['happy-path', 'one-laggard', 'quorum-breaker', 'mismatched-vote'];
+const scenarios = [];
+for (const name of names) {
+  const report = await readSyncedJson(REPO, `docs/samples/${name}.report.json`);
+  const yaml = await readSynced(REPO, `scenarios/${name}.yml`);
+  const nodes = [...new Set(report.timeline.map((r) => r.node))];
+  scenarios.push({
+    name,
+    description: descriptionFromYaml(yaml) ?? report.scenarioDescription,
+    verdict: report.verdict,
+    verdictExplanation: report.verdictExplanation,
+    nodeOutcomes: report.nodeOutcomes,
+    surprises: report.surprises,
+    nodes,
+    frames: framesFromTimeline(report.timeline, nodes),
+    yaml,
+    expectation: expectationFromYaml(yaml),
+    command: provenanceFile.command.replaceAll('<scenario>', name),
+  });
+}
+const data = JSON.stringify(scenarios).replace(/</g, '\\u003c');
+---
+
+<Base
+  title="Upgrade Drill playground"
+  description="Replay real recorded Upgrade Drill runs against real stellar-core containers, see declared expectations against what was observed, and explore the quorum arithmetic."
+  path="/playground/drill/"
+>
+  <p class="small"><a href="/playground/">Playground</a> / Upgrade Drill</p>
+  <h1>Upgrade Drill</h1>
+  <p class="lede">
+    Upgrade Drill boots real <code>stellar-core</code> containers on one machine, runs a scripted upgrade
+    vote, and reports what each node did. Here you can replay four real runs, observation by observation.
+  </p>
+  <div class="callout warn">
+    <strong>Your browser is not running stellar-core.</strong> The runs below happened earlier in GitHub Actions
+    with real containers. The replay steps through what was recorded. Only the last section is a simulation, and it
+    is labeled as one.
+  </div>
+
+  <div class="controls">
+    <label>
+      Scenario
+      <select id="scenario"></select>
+    </label>
+  </div>
+
+  <h2>What was run</h2>
+  <Provenance record={provenance} where="drill samples" />
+  <p id="description"></p>
+  <p class="small">The description is read from the scenario file at the pinned commit. The recorded reports were captured before some descriptions were corrected, so a report's own copy may read differently.</p>
+  <p><strong>Command:</strong> <code id="command"></code></p>
+  <p id="expectation" aria-live="polite"></p>
+
+  <h2>Replay</h2>
+  <p>
+    <span class="badge kind-recorded">Recorded</span>
+    Every observation the tool made, in order. Each step is one poll of every node.
+  </p>
+  <div class="controls">
+    <button id="prev" type="button">Previous</button>
+    <button id="next" type="button">Next</button>
+    <button id="last" type="button">Jump to end</button>
+    <label>
+      Observation
+      <input id="slider" type="range" min="0" max="0" value="0" aria-describedby="frame-summary" />
+    </label>
+  </div>
+  <p id="frame-summary" aria-live="polite"></p>
+  <div id="nodes" class="node-row" aria-hidden="true"></div>
+  <div class="table-scroll">
+    <table>
+      <caption class="small">The same observation as a table.</caption>
+      <thead>
+        <tr><th scope="col">Node</th><th scope="col">Ledger</th><th scope="col">Protocol</th><th scope="col">State</th></tr>
+      </thead>
+      <tbody id="frame-table"></tbody>
+    </table>
+  </div>
+  <p class="small">
+    A final protocol of 0 means the network never adopted an upgrade: a fresh network starts at ledger
+    protocol 0. See <a href="/projects/upgrade-drill/">the project page</a> for how to read this.
+  </p>
+
+  <h2>Result</h2>
+  <p>
+    <span class="badge kind-recorded">Recorded</span>
+    Verdict: <span class="verdict" id="verdict"></span>
+  </p>
+  <p id="verdict-explanation"></p>
+  <div class="table-scroll">
+    <table>
+      <caption class="small">Final outcome per node, as the tool reported it.</caption>
+      <thead><tr><th scope="col">Node</th><th scope="col">Final state</th><th scope="col">Final protocol</th><th scope="col">Explanation</th></tr></thead>
+      <tbody id="outcomes"></tbody>
+    </table>
+  </div>
+  <div id="surprises"></div>
+
+  <h2>The scenario file</h2>
+  <p>
+    <span class="badge kind-recorded">Recorded</span>
+    <code>scenarios/<span id="yaml-name"></span>.yml</code> at commit <code>{shortSha(sha)}</code>, unmodified.
+  </p>
+  <pre><code id="yaml"></code></pre>
+
+  <h2>Quorum arithmetic</h2>
+  <p>
+    <span class="badge kind-simulated">Simulated</span>
+    This is a calculation of the threshold rule, not stellar-core. A threshold percentage rounds <em>up</em> to a number
+    of validators that must agree. It matches the recorded runs: with 3 validators at 67%, all 3 must agree (so one
+    non-voting validator blocked the whole network), and stopping 2 of 5 stalled the network. Only the 3-validator
+    case was confirmed directly.
+  </p>
+  <div class="controls">
+    <label>Validators <input id="q-n" type="number" min="1" max="30" value="3" /></label>
+    <label>Threshold (%) <input id="q-pct" type="number" min="1" max="100" value="67" /></label>
+  </div>
+  <p id="q-result" aria-live="polite"></p>
+
+  <script is:inline id="drill-data" type="application/json" set:html={data} />
+</Base>
+
+<script>
+  import { quorumRequired } from '../../lib/drill.js';
+
+  const scenarios = JSON.parse(document.getElementById('drill-data').textContent);
+  const $ = (id) => document.getElementById(id);
+  const select = $('scenario');
+  const slider = $('slider');
+  let current = scenarios[0];
+
+  for (const s of scenarios) {
+    const o = document.createElement('option');
+    o.value = s.name;
+    o.textContent = s.name;
+    select.appendChild(o);
+  }
+
+  function td(text) {
+    const cell = document.createElement('td');
+    cell.textContent = text;
+    return cell;
+  }
+
+  function describeState(row) {
+    return row.state ?? 'no response';
+  }
+
+  function stateClass(row) {
+    if (row.state === null) return 'is-silent';
+    return row.state === 'Synced!' ? 'is-synced' : 'is-unsynced';
+  }
+
+  function showFrame(index) {
+    const frame = current.frames[index];
+    $('frame-summary').textContent =
+      `Observation ${index + 1} of ${current.frames.length}, ${frame.elapsedSeconds} seconds after the first poll.`;
+    slider.setAttribute('aria-valuetext', $('frame-summary').textContent);
+
+    const nodes = $('nodes');
+    const table = $('frame-table');
+    nodes.textContent = '';
+    table.textContent = '';
+    for (const row of frame.rows) {
+      const box = document.createElement('div');
+      box.className = `node ${stateClass(row)}`;
+      const name = document.createElement('strong');
+      name.textContent = row.node;
+      const line = document.createElement('span');
+      line.textContent = `${describeState(row)}, protocol ${row.protocolVersion ?? 'unknown'}`;
+      box.append(name, line);
+      nodes.appendChild(box);
+
+      const tr = document.createElement('tr');
+      tr.append(td(row.node), td(row.ledgerNum ?? 'no response'), td(row.protocolVersion ?? 'no response'), td(describeState(row)));
+      table.appendChild(tr);
+    }
+  }
+
+  function renderScenario() {
+    current = scenarios.find((s) => s.name === select.value);
+    $('description').textContent = current.description;
+    $('command').textContent = current.command;
+
+    const expected = current.expectation.finalProtocolVersion;
+    const observed = current.nodeOutcomes.map((o) => o.finalProtocolVersion);
+    if (expected === null) {
+      $('expectation').textContent = 'This scenario declares no final protocol expectation.';
+    } else {
+      const met = observed.every((p) => p === expected);
+      $('expectation').textContent =
+        `Declared in the scenario: final protocol ${expected}. Observed: ${observed.map((p) => p ?? 'no response').join(', ')}. ` +
+        (met ? 'The expectation was met.' : 'The expectation was not met, which is why the verdict is not "upgraded".');
+    }
+
+    slider.max = String(current.frames.length - 1);
+    slider.value = '0';
+    showFrame(0);
+
+    $('verdict').textContent = current.verdict;
+    $('verdict-explanation').textContent = current.verdictExplanation;
+    const outcomes = $('outcomes');
+    outcomes.textContent = '';
+    for (const o of current.nodeOutcomes) {
+      const tr = document.createElement('tr');
+      tr.append(td(o.node), td(o.finalState ?? 'no response'), td(o.finalProtocolVersion ?? 'no response'), td(o.explanation));
+      outcomes.appendChild(tr);
+    }
+
+    const surprises = $('surprises');
+    surprises.textContent = '';
+    if (current.surprises && current.surprises.length > 0) {
+      const heading = document.createElement('h3');
+      heading.textContent = 'Surprises the tool flagged';
+      const list = document.createElement('ul');
+      for (const item of current.surprises) {
+        const li = document.createElement('li');
+        li.textContent = typeof item === 'string' ? item : JSON.stringify(item);
+        list.appendChild(li);
+      }
+      surprises.append(heading, list);
+    }
+
+    $('yaml-name').textContent = current.name;
+    $('yaml').textContent = current.yaml;
+  }
+
+  slider.addEventListener('input', () => showFrame(Number(slider.value)));
+  $('prev').addEventListener('click', () => {
+    slider.value = String(Math.max(0, Number(slider.value) - 1));
+    showFrame(Number(slider.value));
+  });
+  $('next').addEventListener('click', () => {
+    slider.value = String(Math.min(Number(slider.max), Number(slider.value) + 1));
+    showFrame(Number(slider.value));
+  });
+  $('last').addEventListener('click', () => {
+    slider.value = slider.max;
+    showFrame(Number(slider.value));
+  });
+  select.addEventListener('change', renderScenario);
+
+  function renderQuorum() {
+    const n = Number($('q-n').value);
+    const pct = Number($('q-pct').value);
+    if (!Number.isInteger(n) || n < 1 || !(pct >= 1 && pct <= 100)) {
+      $('q-result').textContent = 'Enter a whole number of validators and a threshold between 1 and 100.';
+      return;
+    }
+    const required = quorumRequired(n, pct);
+    const canLose = n - required;
+    $('q-result').textContent =
+      `With ${n} validators at ${pct}%, ${required} must agree, so the network can lose at most ${canLose} validator${canLose === 1 ? '' : 's'} and keep agreeing.`;
+  }
+  $('q-n').addEventListener('input', renderQuorum);
+  $('q-pct').addEventListener('input', renderQuorum);
+
+  renderScenario();
+  renderQuorum();
+</script>

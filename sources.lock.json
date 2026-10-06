@@ -1,0 +1,61 @@
+{
+  "org": "stellarbrief",
+  "_comment": "Each repository is pinned to one commit. The site shows exactly what those commits contain. Bump a sha deliberately, run `npm run sync`, and review the diff of the rendered pages.",
+  "repos": {
+    "upgrade-preflight": {
+      "sha": "af115bf404e55819dcb285f311c8be10e7bb7f39",
+      "files": [
+        "README.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        "docs/ARCHITECTURE.md",
+        "docs/CI_USAGE.md",
+        "docs/WRITING_SCENARIOS.md",
+        "docs/samples/27-to-28.report.json",
+        "docs/samples/27-to-28.provenance.json",
+        "docs/samples/28-to-29.report.json",
+        "docs/samples/28-to-29.provenance.json",
+        "src/diff/engine.ts",
+        "src/diff/types.ts"
+      ],
+      "optional": []
+    },
+    "upgrade-drill": {
+      "sha": "bd42468f7d4872668da580dddbe96aabd4852fd8",
+      "files": [
+        "README.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        "docs/ARCHITECTURE.md",
+        "docs/WRITING_SCENARIOS.md",
+        "docs/TROUBLESHOOTING.md",
+        "docs/samples/provenance.json",
+        "docs/samples/happy-path.report.json",
+        "docs/samples/one-laggard.report.json",
+        "docs/samples/quorum-breaker.report.json",
+        "docs/samples/mismatched-vote.report.json",
+        "scenarios/happy-path.yml",
+        "scenarios/one-laggard.yml",
+        "scenarios/quorum-breaker.yml",
+        "scenarios/mismatched-vote.yml"
+      ],
+      "optional": []
+    },
+    "advisory-brief": {
+      "sha": "c31cf40dc3568bd5e9bfbc335758acfdfecae1bd",
+      "files": [
+        "README.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        "docs/ARCHITECTURE.md",
+        "src/brief/grounding.ts",
+        "src/brief/schema.ts"
+      ],
+      "optional": [
+        "docs/samples/stellar-core-v29.0.0.recording.json"
+      ]
+    }
+  }
+}

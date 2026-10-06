@@ -1,0 +1,22 @@
+{
+  "name": "stellarbrief-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The StellarBrief website: a front door, documentation layer and demonstration layer for the three StellarBrief repositories.",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "dev": "astro dev",
+    "build": "node scripts/sync.mjs && astro build",
+    "preview": "astro preview",
+    "test": "node --test \"src/lib/*.test.js\""
+  },
+  "dependencies": {
+    "astro": "^7.3.5",
+    "marked": "^18.1.0",
+    "sanitize-html": "^2.18.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

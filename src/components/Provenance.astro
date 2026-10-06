@@ -1,0 +1,20 @@
+---
+import { assertProvenance, KIND_MEANING } from '../lib/provenance.js';
+
+interface Props {
+  record: Record<string, unknown>;
+  where: string;
+}
+
+// Throws at build time if the record is missing or malformed, so nothing renders without a source.
+const p = assertProvenance(Astro.props.record, Astro.props.where);
+const date = p.date ? new Date(p.date).toISOString().slice(0, 10) : null;
+---
+
+<p class="provenance">
+  <span class={`badge kind-${p.kind.toLowerCase()}`} title={KIND_MEANING[p.kind]}>{p.kind}</span>
+  {' '}{p.source}{date && <> &middot; {date}</>}
+  {p.commit && <> &middot; commit <code>{p.commit.slice(0, 7)}</code></>}
+  {p.url && <> &middot; <a href={p.url}>source</a></>}
+  {p.note && <><br />{p.note}</>}
+</p>

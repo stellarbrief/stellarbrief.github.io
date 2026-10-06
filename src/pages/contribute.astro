@@ -1,0 +1,89 @@
+---
+import Base from '../layouts/Base.astro';
+import { projects, ORG } from '../data/projects.js';
+import { loadGithub, loadManifest, readSynced, shortSha } from '../lib/synced.js';
+import { extractSection, renderMarkdown } from '../lib/markdown.js';
+
+const github = await loadGithub();
+const manifest = await loadManifest();
+
+const entries = [];
+for (const p of projects) {
+  const sha = manifest.repos[p.repo].sha;
+  const contributing = await readSynced(p.repo, 'CONTRIBUTING.md');
+  const how = extractSection(contributing, 'How maintainers work here');
+  entries.push({
+    project: p,
+    sha,
+    data: github.repos[p.repo],
+    howHtml: how ? await renderMarkdown(how.replace(/^##\s+.*\n+/, ''), { repo: p.repo, sha, file: 'CONTRIBUTING.md' }) : null,
+  });
+}
+const complexity = (labels: string[]) => labels.find((l) => l.startsWith('complexity:')) ?? '';
+---
+
+<Base
+  title="Contribute"
+  description="How to contribute to the StellarBrief repositories: where the code is, which issues are open, how changes are reviewed, and where to report a security problem."
+  path="/contribute/"
+>
+  <h1>Contribute</h1>
+  <p class="lede">
+    The work happens on GitHub. Pick a repository, read its <code>CONTRIBUTING.md</code> for setup and the pull
+    request flow, and comment on an issue before you start so two people don't build the same thing.
+  </p>
+  <p>
+    Each repository's unit tests run without a Stellar network. Upgrade Preflight and Upgrade Drill need Docker to
+    run their CLIs and for their integration tests, which skip cleanly when Docker isn't available.
+  </p>
+
+  {
+    entries.map(({ project, sha, data, howHtml }) => (
+      <section aria-labelledby={`c-${project.slug}`}>
+        <h2 id={`c-${project.slug}`}>{project.name}</h2>
+        <p>
+          <a href={`https://github.com/${ORG}/${project.repo}`}>Repository</a> &middot;
+          <a href={`https://github.com/${ORG}/${project.repo}/blob/${sha}/CONTRIBUTING.md`}> Contributing guide</a> &middot;
+          <a href={`https://github.com/${ORG}/${project.repo}/issues`}> All issues</a> &middot;
+          <a href={`https://github.com/${ORG}/${project.repo}/security/advisories/new`}> Report a security issue privately</a>
+        </p>
+
+        <h3>Open issues</h3>
+        <p class="small">
+          <span class="badge kind-recorded">Recorded</span>
+          Fetched from GitHub when this site was built, on {github.fetchedAt.slice(0, 10)}. It may be out of date.
+        </p>
+        {data.error && <p class="callout warn">The list could not be fetched at build time: {data.error}. See the repository's issues page.</p>}
+        {!data.error && data.openIssues.length === 0 && <p>No open issues at build time.</p>}
+        {
+          data.openIssues.length > 0 && (
+            <ul>
+              {data.openIssues.map((i) => (
+                <li>
+                  <a href={i.url}>#{i.number} {i.title}</a>
+                  {complexity(i.labels) && <span class="small"> ({complexity(i.labels)})</span>}
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        {
+          howHtml && (
+            <>
+              <h3>How changes are reviewed</h3>
+              <p class="small">From the repository's own contributing guide at <code>{shortSha(sha)}</code>.</p>
+              <div class="prose" set:html={howHtml} />
+            </>
+          )
+        }
+      </section>
+    ))
+  }
+
+  <h2>Security</h2>
+  <p>
+    Please don't open a public issue for a vulnerability. Each repository has private vulnerability reporting
+    enabled, linked above and described in its <code>SECURITY.md</code>.
+  </p>
+</Base>

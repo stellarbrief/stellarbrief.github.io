@@ -1,0 +1,63 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  path: string;
+}
+
+const { title, description, path } = Astro.props;
+const site = 'https://stellarbrief.github.io';
+const canonical = new URL(path, site).href;
+const fullTitle = path === '/' ? title : `${title} | StellarBrief`;
+const nav = [
+  { href: '/', label: 'Home' },
+  { href: '/playground/', label: 'Playground' },
+  { href: '/contribute/', label: 'Contribute' },
+];
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="StellarBrief" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={`${site}/og.png`} />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="bar">
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28" />StellarBrief</a>
+        <nav class="site-nav" aria-label="Main">
+          {nav.map((n) => <a href={n.href} aria-current={isCurrent(n.href) ? 'page' : undefined}>{n.label}</a>)}
+          <a href="https://github.com/stellarbrief">GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="bar">
+        <p>
+          Open-source tools, one maintainer. Not affiliated with the Stellar Development Foundation, and
+          none of this is meant for production use. The repositories are the source of truth; this site
+          reflects them at pinned commits. <a href="/playground/#labels">How to read the labels on this site.</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

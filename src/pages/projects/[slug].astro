@@ -1,0 +1,95 @@
+---
+import Base from '../../layouts/Base.astro';
+import { projects, STATUS_CRITERIA, STATUS_REVIEWED, ORG } from '../../data/projects.js';
+import { loadGithub, loadManifest, readSynced, readSyncedIfPresent, shortSha } from '../../lib/synced.js';
+import { extractSection, renderMarkdown } from '../../lib/markdown.js';
+
+export function getStaticPaths() {
+  return projects.map((p) => ({ params: { slug: p.slug }, props: { project: p } }));
+}
+
+const { project } = Astro.props;
+const github = (await loadGithub()).repos[project.repo];
+const manifest = (await loadManifest()).repos[project.repo];
+const sha = manifest.sha;
+const repoUrl = `https://github.com/${ORG}/${project.repo}`;
+const blob = (path: string) => `${repoUrl}/blob/${sha}/${path}`;
+
+const readme = await readSynced(project.repo, 'README.md');
+const readmeHtml = await renderMarkdown(readme, { repo: project.repo, sha, file: 'README.md', dropFirstHeading: true });
+
+const changelog = await readSyncedIfPresent(project.repo, 'CHANGELOG.md');
+const limitsMd = changelog ? extractSection(changelog, 'Known limitations', 3) : null;
+const limitsHtml = limitsMd
+  ? await renderMarkdown(limitsMd.replace(/^###\s+Known limitations\s*/, ''), { repo: project.repo, sha, file: 'CHANGELOG.md' })
+  : null;
+
+const docs = manifest.files.filter((f: string) => f.startsWith('docs/') && f.endsWith('.md'));
+const samples = manifest.files.filter((f: string) => f.startsWith('docs/samples/') && f.endsWith('.json') && f.includes('report'));
+---
+
+<Base title={project.name} description={`${project.tagline} ${project.summary}`} path={`/projects/${project.slug}/`}>
+  <p class="small"><a href="/">Home</a> / Projects</p>
+  <h1>{project.name}</h1>
+  <p>
+    <span class="badge status" title={STATUS_CRITERIA[project.status]}>{project.status}</span>
+    <span class="small"> reviewed {STATUS_REVIEWED}</span>
+  </p>
+  <p class="lede">{project.tagline}</p>
+  <p>{project.summary}</p>
+  <div class="callout warn">
+    <strong>Why {project.status.toLowerCase()}:</strong> {project.statusWhy}
+  </div>
+
+  <div class="layout">
+    <article class="prose">
+      <h2>See it work</h2>
+      <p>
+        <a href={project.playground}>The {project.name} playground</a> shows real recorded output and,
+        where the tool's own code can run safely in a browser, runs that code on it. Each result is
+        labeled with where it came from.
+      </p>
+
+      {limitsHtml && (
+        <>
+          <h2>Current limitations</h2>
+          <div set:html={limitsHtml} />
+        </>
+      )}
+
+      <h2>README <span class="small">(from the repository at <code>{shortSha(sha)}</code>)</span></h2>
+      <div set:html={readmeHtml} />
+    </article>
+
+    <aside class="sidebar" aria-label="Links">
+      <h2 style="margin-top:0;font-size:1.1rem">On GitHub</h2>
+      <ul>
+        <li><a href={repoUrl}>Repository</a></li>
+        <li>
+          <a href={`${repoUrl}/issues`}>Issues</a>
+          {github && !github.error && <span class="small"> ({github.openIssues.length} open at build time)</span>}
+        </li>
+        <li>
+          <a href={`${repoUrl}/releases`}>Releases</a>
+          {github?.latestRelease && <span class="small"> (latest {github.latestRelease.tag})</span>}
+          {github && !github.latestRelease && !github.error && <span class="small"> (none yet)</span>}
+        </li>
+        <li><a href={blob('CONTRIBUTING.md')}>Contributing</a></li>
+        <li><a href={`${repoUrl}/security/advisories/new`}>Report a security issue</a></li>
+      </ul>
+      <h2 style="font-size:1.1rem">Documentation</h2>
+      <ul>
+        {docs.map((d: string) => <li><a href={blob(d)}>{d.replace('docs/', '')}</a></li>)}
+        {manifest.files.includes('CHANGELOG.md') && <li><a href={blob('CHANGELOG.md')}>CHANGELOG.md</a></li>}
+      </ul>
+      {samples.length > 0 && (
+        <>
+          <h2 style="font-size:1.1rem">Recorded samples</h2>
+          <ul>
+            {samples.map((s: string) => <li><a href={blob(s)}>{s.replace('docs/samples/', '')}</a></li>)}
+          </ul>
+        </>
+      )}
+    </aside>
+  </div>
+</Base>

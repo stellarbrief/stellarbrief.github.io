@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.astro/
+# Pulled from the three repositories at the commits in sources.lock.json by `npm run sync`.
+# Never edit these; change the source repository and bump the lock instead.
+synced/
+.env
+.env.*

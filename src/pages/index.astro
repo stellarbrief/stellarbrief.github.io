@@ -1,0 +1,88 @@
+---
+import Base from '../layouts/Base.astro';
+import { projects, STATUS_CRITERIA, STATUS_REVIEWED, ORG } from '../data/projects.js';
+import { loadGithub, loadManifest, shortSha } from '../lib/synced.js';
+
+const github = await loadGithub();
+const manifest = await loadManifest();
+---
+
+<Base
+  title="StellarBrief"
+  description="Open-source tools for understanding, testing and communicating Stellar protocol upgrades: preflight checks for Soroban contracts, local validator upgrade drills, and plain-language advisory briefs."
+  path="/"
+>
+  <h1>Open-source tooling for Stellar protocol upgrades</h1>
+  <p class="lede">
+    Three small tools for the people affected by a Stellar upgrade: contract developers, validator
+    operators, and anyone who has to explain an advisory to a team. The GitHub repositories are the
+    product. This site shows what they actually do, using real recorded runs.
+  </p>
+
+  <div class="grid">
+    {
+      projects.map((p) => {
+        const data = github.repos[p.repo];
+        return (
+          <section class="card" aria-labelledby={`card-${p.slug}`}>
+            <h2 id={`card-${p.slug}`} style="font-size:1.25rem;margin:0">{p.name}</h2>
+            <p>
+              <span class="badge status" title={STATUS_CRITERIA[p.status]}>{p.status}</span>
+              {data?.latestRelease && <span class="small"> &middot; latest release {data.latestRelease.tag}</span>}
+            </p>
+            <p><strong>{p.tagline}</strong></p>
+            <p>{p.summary}</p>
+            <p class="small">For: {p.audience}.{p.needsDocker && ' Needs Docker to run.'}</p>
+            <p class="links">
+              <a href={`/projects/${p.slug}/`}>About</a>
+              <a href={p.playground}>See it work</a>
+              <a href={`https://github.com/${ORG}/${p.repo}`}>GitHub</a>
+            </p>
+          </section>
+        );
+      })
+    }
+  </div>
+
+  <h2>Why these exist</h2>
+  <ul>
+    <li>
+      A protocol upgrade can change what a contract costs or whether it runs. Developers get a short window
+      to check, and no easy way to compare two protocol versions side by side.
+    </li>
+    <li>
+      Validator operators need to know how an upgrade vote behaves before it matters, including when one
+      validator misses it. That is hard to rehearse without a real network.
+    </li>
+    <li>
+      Advisories are written for node operators. Everyone downstream has to translate them under time
+      pressure, and a summary is only useful if you can check it against the source.
+    </li>
+  </ul>
+
+  <h2>How the tools relate</h2>
+  <p>
+    They share no code and no data. They serve different people in the same upgrade cycle.
+    <span class="badge kind-example">Example</span> A simplified timeline:
+  </p>
+  <ol>
+    <li><strong>An announcement is published.</strong> Advisory Brief helps someone read it and decide who needs to act.</li>
+    <li><strong>Before the vote:</strong> contract developers use Upgrade Preflight to compare their contracts across the two protocol versions.</li>
+    <li><strong>Before the vote:</strong> validator operators use Upgrade Drill to rehearse how the vote behaves on a small local network.</li>
+  </ol>
+
+  <h2>Honest status</h2>
+  <p>
+    All three are <strong>Experimental</strong> (reviewed {STATUS_REVIEWED}): {STATUS_CRITERIA.Experimental} Each
+    project page explains its own limits.
+  </p>
+
+  <p class="small">
+    This page reflects commits
+    {
+      Object.entries(manifest.repos).map(([repo, m], i) => (
+        <>{i > 0 ? ', ' : ' '}<code>{repo}@{shortSha(m.sha)}</code></>
+      ))
+    }. GitHub data was fetched at build time on {github.fetchedAt.slice(0, 10)}, so it is a recording, not live.
+  </p>
+</Base>

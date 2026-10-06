@@ -1,0 +1,180 @@
+---
+import Base from '../../layouts/Base.astro';
+import Provenance from '../../components/Provenance.astro';
+import { fromSampleProvenance } from '../../lib/provenance.js';
+import { loadManifest, readSyncedJson, shortSha } from '../../lib/synced.js';
+
+const REPO = 'upgrade-preflight';
+const sha = (await loadManifest()).repos[REPO].sha;
+
+const names = ['27-to-28', '28-to-29'];
+const samples = [];
+for (const name of names) {
+  const report = await readSyncedJson(REPO, `docs/samples/${name}.report.json`);
+  const provenance = await readSyncedJson(REPO, `docs/samples/${name}.provenance.json`);
+  samples.push({
+    id: name,
+    label: `Protocol ${report.fromProtocol} to ${report.toProtocol}`,
+    provenance: fromSampleProvenance(provenance, `preflight sample ${name}`),
+    command: provenance.command,
+    imageNote: provenance.imageNote ?? null,
+    report,
+  });
+}
+
+// Embedded for the client script; `<` is escaped so the data cannot close the script tag.
+const data = JSON.stringify(samples).replace(/</g, '\\u003c');
+---
+
+<Base
+  title="Upgrade Preflight playground"
+  description="Real recorded protocol comparisons from Upgrade Preflight, and its own diff engine re-classifying them in your browser."
+  path="/playground/preflight/"
+>
+  <p class="small"><a href="/playground/">Playground</a> / Upgrade Preflight</p>
+  <h1>Upgrade Preflight</h1>
+  <p class="lede">
+    Upgrade Preflight runs the same contract calls on two real local networks at different protocol
+    versions and compares the results. This page shows real reports from that, and lets you re-run the tool's
+    own comparison code on them.
+  </p>
+  <div class="callout warn">
+    <strong>This page does not run Docker, Stellar or any contract.</strong> The networks and contracts ran
+    earlier, in GitHub Actions. What happens in your browser is the diff engine, on the recorded results.
+  </div>
+
+  <div class="controls">
+    <label>
+      Comparison
+      <select id="pair"></select>
+    </label>
+    <label>
+      Cost threshold (%)
+      <input id="threshold" type="number" min="0" max="100" step="0.1" value="5" />
+    </label>
+  </div>
+
+  <h2>Recorded report</h2>
+  <div id="recorded-provenance"></div>
+  <p class="small" id="image-note"></p>
+
+  <h2>Results at your threshold</h2>
+  <p>
+    <span class="badge kind-generated">Generated</span>
+    Computed in your browser by the repository's own <code>diffScenario</code> function
+    (<code>src/diff/engine.ts</code> at commit <code>{shortSha(sha)}</code>), from the recorded results above and the threshold
+    you chose. The recorded verdicts used a 5% threshold.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <caption class="small">Verdict per scenario. Instruction counts are RPC simulation estimates.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Scenario</th>
+          <th scope="col">Recorded verdict (5%)</th>
+          <th scope="col">Verdict at your threshold</th>
+          <th scope="col">Instructions, baseline</th>
+          <th scope="col">Instructions, target</th>
+          <th scope="col">Change</th>
+        </tr>
+      </thead>
+      <tbody id="results"></tbody>
+    </table>
+  </div>
+  <p id="summary" aria-live="polite"></p>
+
+  <h2>What this shows, and what it doesn't</h2>
+  <ul>
+    <li>
+      The measured resources are <code>instructions</code>, <code>diskReadBytes</code>, <code>writeBytes</code>,
+      footprint entry counts and the minimum resource fee. There is no memory metric.
+    </li>
+    <li>The contracts are four tiny examples, and the figures are simulation estimates, not on-ledger costs. Don't extrapolate them.</li>
+    <li>The cause of the instruction changes has not been traced to a specific protocol change.</li>
+    <li>
+      On the 28 to 29 comparison, a threshold of 1 flags all five scenarios and a threshold of 2 flags none, because
+      every instruction change is between 1.4% and 1.8%. The verdict depends on the threshold you choose.
+    </li>
+  </ul>
+
+  <h2>Reproduce it yourself</h2>
+  <p>
+    The exact command and the workflow run that produced each report are in the provenance above. See the
+    <a href="/projects/upgrade-preflight/">project page</a> for setup.
+  </p>
+
+  <script is:inline id="preflight-data" type="application/json" set:html={data} />
+</Base>
+
+<script>
+  import { diffScenario } from '../../../synced/upgrade-preflight/src/diff/engine';
+
+  const samples = JSON.parse(document.getElementById('preflight-data').textContent);
+  const pairSelect = document.getElementById('pair');
+  const thresholdInput = document.getElementById('threshold');
+  const tbody = document.getElementById('results');
+  const summary = document.getElementById('summary');
+  const provenanceBox = document.getElementById('recorded-provenance');
+  const imageNote = document.getElementById('image-note');
+
+  for (const s of samples) {
+    const option = document.createElement('option');
+    option.value = s.id;
+    option.textContent = s.label;
+    pairSelect.appendChild(option);
+  }
+
+  function cell(text, className) {
+    const td = document.createElement('td');
+    td.textContent = text;
+    if (className) td.className = className;
+    return td;
+  }
+
+  function render() {
+    const sample = samples.find((s) => s.id === pairSelect.value);
+    const threshold = Number(thresholdInput.value);
+    const p = sample.provenance;
+
+    provenanceBox.textContent = '';
+    const line = document.createElement('p');
+    line.className = 'provenance';
+    const badge = document.createElement('span');
+    badge.className = 'badge kind-recorded';
+    badge.textContent = p.kind;
+    line.append(badge, ` ${p.source} · ${String(p.date).slice(0, 10)} · commit ${String(p.commit).slice(0, 7)} · `);
+    const link = document.createElement('a');
+    link.href = p.url;
+    link.textContent = 'workflow run';
+    line.append(link, document.createElement('br'), `Command: ${sample.command}`);
+    provenanceBox.appendChild(line);
+    imageNote.textContent = sample.imageNote ?? '';
+
+    tbody.textContent = '';
+    let changed = 0;
+    for (const recorded of sample.report.scenarios) {
+      const result = diffScenario(recorded.baseline, recorded.target, threshold);
+      const b = recorded.baseline.resources?.instructions;
+      const t = recorded.target.resources?.instructions;
+      const pct = b ? ((t - b) / b) * 100 : null;
+      if (result.verdict !== 'SAME') changed += 1;
+
+      const tr = document.createElement('tr');
+      tr.append(
+        cell(recorded.scenario),
+        cell(recorded.verdict, 'verdict'),
+        cell(result.verdict, 'verdict'),
+        cell(b === undefined ? 'n/a' : String(b)),
+        cell(t === undefined ? 'n/a' : String(t)),
+        cell(pct === null ? 'n/a' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`, 'delta-' + (pct !== null && pct < 0 ? 'neg' : 'pos'))
+      );
+      tbody.appendChild(tr);
+    }
+    summary.textContent =
+      `At a ${threshold}% threshold, ${changed} of ${sample.report.scenarios.length} scenarios are not SAME.`;
+  }
+
+  pairSelect.addEventListener('change', render);
+  thresholdInput.addEventListener('input', render);
+  render();
+</script>

@@ -1,0 +1,161 @@
+---
+import Base from '../../layouts/Base.astro';
+import Provenance from '../../components/Provenance.astro';
+import { loadManifest, readSyncedIfPresent, shortSha } from '../../lib/synced.js';
+import { normalizeForMatch } from '../../../synced/advisory-brief/src/brief/grounding.ts';
+
+const REPO = 'advisory-brief';
+const sha = (await loadManifest()).repos[REPO].sha;
+const raw = await readSyncedIfPresent(REPO, 'docs/samples/stellar-core-v29.0.0.recording.json');
+const recording = raw ? JSON.parse(raw) : null;
+
+let provenance = null;
+let groups = [];
+let counts = null;
+let flaggedCount = 0;
+if (recording) {
+  const gen = recording.provenance.generator;
+  provenance = {
+    kind: recording.provenance.kind,
+    source: `Real run of the tool's generator and verifier (${gen.provider}, ${gen.model}), recorded once`,
+    date: recording.provenance.recordedAt,
+    commit: recording.provenance.tool.commit,
+    note: recording.provenance.workingTreeDirty ? 'Recorded with uncommitted changes in the working tree.' : null,
+  };
+
+  const source = normalizeForMatch(recording.source.text);
+  const check = (claim: { text: string; quote: string | null; unknown: boolean }) => {
+    const words = claim.quote ? claim.quote.trim().split(/\s+/).length : 0;
+    const flags: string[] = [];
+    if (claim.quote && words <= 3) flags.push('very short quote');
+    if (claim.quote && /^https?:\/\//.test(claim.quote)) flags.push('quote is a link');
+    return {
+      text: claim.text,
+      quote: claim.quote,
+      unknown: claim.unknown,
+      found: !claim.unknown && claim.quote !== null && source.includes(normalizeForMatch(claim.quote)),
+      flags,
+    };
+  };
+
+  const r = recording.raw;
+  groups = [
+    { title: 'What happened', claims: r.whatHappened.map(check) },
+    { title: 'Urgency reason', claims: [check(r.urgency.reason)] },
+    { title: 'Are you affected? (explanations)', claims: r.affected.map((a: any) => ({ ...check(a.explanation), label: `${a.audienceId}: ${a.affected}` })) },
+    { title: 'What to tell your team', claims: r.whatToTellYourTeam.map(check) },
+  ];
+  const all = groups.flatMap((g) => g.claims);
+  counts = { total: all.length, found: all.filter((c) => c.found).length, unknown: all.filter((c) => c.unknown).length };
+  flaggedCount = all.filter((c) => c.flags.length > 0).length;
+}
+---
+
+<Base
+  title="Advisory Brief playground"
+  description="A real recorded run of Advisory Brief on a real stellar-core release, showing which quotes the verifier found and what it cannot check."
+  path="/playground/advisory/"
+>
+  <p class="small"><a href="/playground/">Playground</a> / Advisory Brief</p>
+  <h1>Advisory Brief</h1>
+  <p class="lede">
+    Advisory Brief asks a model for a plain-language brief where every claim carries a quote, then checks in code
+    that each quote really appears in the source. This page shows one real run, claim by claim.
+  </p>
+  <div class="callout warn">
+    <strong>This page does not generate briefs, and nothing here calls a model.</strong> It is one recording, made
+    once. Generating a brief needs an API key, and a public page with a key could be drained, so the tool runs
+    locally. See the <a href="/projects/advisory-brief/">project page</a>.
+  </div>
+
+  {
+    !recording && (
+      <div class="callout">
+        No recording is available at the pinned commit <code>{shortSha(sha)}</code> yet. This page will show one
+        once the repository contains it.
+      </div>
+    )
+  }
+
+  {
+    recording && (
+      <>
+        <h2>The run</h2>
+        <Provenance record={provenance} where="advisory recording" />
+
+        <h2>The source text</h2>
+        <p>
+          <span class="badge kind-recorded">Recorded</span>
+          <a href={recording.source.url}>{recording.source.label}</a>, fetched from the GitHub Releases API when
+          the run was made. This is exactly what the tool was given.
+        </p>
+        <pre><code>{recording.source.text}</code></pre>
+
+        <h2>Every claim, and whether its quote was found</h2>
+        <p>
+          <span class="badge kind-generated">Generated</span>
+          The "quote found" column was recomputed when this page was built, using the repository's own
+          <code>normalizeForMatch</code> (<code>src/brief/grounding.ts</code> at <code>{shortSha(sha)}</code>) against
+          the recorded source and the model's raw output.
+          {counts && ` ${counts.found} of ${counts.total} claims have a quote found in the source (${counts.unknown} marked unknown by the model). `}
+          The tool's own recorded count was {recording.verified.verification.verifiedClaims} of {recording.verified.verification.totalClaims}, with {recording.verified.verification.rejectedClaims} removed.
+          {
+            counts && recording.verified.verification.verifiedClaims > counts.found &&
+              ` The difference is the ${recording.verified.verification.verifiedClaims - counts.found} claims marked unknown: at the recorded commit the tool counted a claim with no quote as verified. The repository now counts them separately, and the recount above is the accurate one for this recording.`
+          }
+        </p>
+        {
+          groups.map((g) => (
+            <>
+              <h3>{g.title}</h3>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th scope="col">Claim</th><th scope="col">Quote it cites</th><th scope="col">Quote found?</th><th scope="col">Flags added by this site</th></tr>
+                  </thead>
+                  <tbody>
+                    {g.claims.map((c) => (
+                      <tr>
+                        <td>{c.label && <strong>{c.label}: </strong>}{c.unknown ? <em>marked unknown by the model</em> : c.text}</td>
+                        <td>{c.quote ? <q>{c.quote}</q> : <span class="small">none</span>}</td>
+                        <td>{c.unknown ? 'n/a' : c.found ? 'Yes' : 'No'}</td>
+                        <td>{c.flags.length > 0 ? c.flags.join(', ') : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ))
+        }
+        <p class="small">
+          The flags are a heuristic added by this site to point at weak evidence (a quote of three words or fewer, or a
+          bare link). They are not part of the tool.
+        </p>
+
+        <h2>What the quote check does not tell you</h2>
+        <ul>
+          <li>
+            A found quote proves the words exist in the source, not that they support the claim next to them. Read the
+            claims above against their quotes.
+            {flaggedCount > 0
+              ? ` In this recording, ${flaggedCount} of ${counts.total} claims cite a quote flagged as short or a bare link, which is weak evidence for the sentence it sits beside.`
+              : ' In this recording, no quote was flagged as short or a bare link, but that does not show the claims are accurate.'}
+          </li>
+          <li>
+            These are not checked against the source at all, and are the model's judgment: the urgency level
+            (<strong>{recording.raw.urgency.level}</strong> here), the per-audience yes/no/unclear flags, and the list of
+            things the advisory doesn't say.
+          </li>
+          <li>One recording is one run. Another run on the same text can word things differently.</li>
+        </ul>
+        <p>
+          The model's list of what it does not know, as recorded:
+        </p>
+        <ul>
+          {recording.raw.whatWeDontKnow.map((item: string) => <li>{item}</li>)}
+        </ul>
+      </>
+    )
+  }
+</Base>
