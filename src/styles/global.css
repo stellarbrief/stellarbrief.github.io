@@ -109,6 +109,8 @@ code {
   background: var(--code-bg);
   padding: 0.1em 0.35em;
   border-radius: 4px;
+  /* Long identifiers such as NETWORK_LIVE_WITH_HALTED_NODES must wrap on a phone. */
+  overflow-wrap: anywhere;
 }
 pre {
   background: var(--code-bg);
@@ -120,6 +122,11 @@ pre {
 pre code {
   background: none;
   padding: 0;
+  overflow-wrap: normal;
+}
+.prose table {
+  display: block;
+  overflow-x: auto;
 }
 
 table {

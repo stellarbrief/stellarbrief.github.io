@@ -53,19 +53,25 @@ settings). It rebuilds on every push to `main` and daily, so the build-time GitH
 
 ## What has been verified, and what hasn't
 
-Verified: the helper tests pass (`npm test`), the site builds from the pinned commits, and the three
-playgrounds were exercised in a desktop browser against the built output (scenario switching, the replay
-slider, the editable threshold re-running the real diff engine, the quorum calculator, and the advisory
-recount).
+Verified, on the deployed site at https://stellarbrief.github.io/:
 
-Not verified yet:
+- The helper tests pass (`npm test`), and the site builds and deploys from the pinned commits.
+- The three playgrounds work in a desktop browser (scenario switching, the replay slider, the editable threshold
+  re-running the real diff engine, the quorum calculator, the advisory recount), with no console errors.
+- Mobile width (375px, emulated): no horizontal scrolling on any page, after one fix for a long identifier in
+  inline code.
+- Colour contrast, measured in both light and dark themes: every text and badge pair is at least 5.3:1.
+- A scripted structural check of all nine pages: one `h1`, no skipped heading levels, labelled form controls, alt
+  text, table headers, a `main` landmark, a skip link, and unique titles.
+- Keyboard: the skip link is the first Tab stop with a visible focus outline, and the replay slider responds to the
+  arrow keys and announces the observation.
 
-- Mobile layout, the dark theme, keyboard-only use and screen readers. The markup follows the accessibility
-  plan (labels, a table equivalent for every visual, visible focus), but it hasn't been tested with these.
-- Deployment to GitHub Pages.
-- The Content-Security-Policy is not set. Scripts are now emitted as files so one can be added, but it should be
-  added only after checking the playgrounds in a browser with it on, because a wrong policy would silently
-  break them.
+Not verified:
+
+- Screen readers. Nothing here was tested with assistive technology, and the checks above don't replace that.
+- A real phone: mobile was emulated in a desktop browser.
+- The Content-Security-Policy is not set. Scripts are emitted as files so one can be added, but it should be added
+  only after checking the playgrounds with it on, because a wrong policy would silently break them.
 
 ## License
 
