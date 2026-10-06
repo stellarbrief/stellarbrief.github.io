@@ -3,7 +3,7 @@
   "_comment": "Each repository is pinned to one commit. The site shows exactly what those commits contain. Bump a sha deliberately, run `npm run sync`, and review the diff of the rendered pages.",
   "repos": {
     "upgrade-preflight": {
-      "sha": "af115bf404e55819dcb285f311c8be10e7bb7f39",
+      "sha": "a892ba92cc54c542eaff6eded2d77be28bad2591",
       "files": [
         "README.md",
         "CHANGELOG.md",
@@ -22,7 +22,7 @@
       "optional": []
     },
     "upgrade-drill": {
-      "sha": "bd42468f7d4872668da580dddbe96aabd4852fd8",
+      "sha": "d26cb381a3856569b86ac8369806ace201cf5e1f",
       "files": [
         "README.md",
         "CHANGELOG.md",
@@ -44,7 +44,7 @@
       "optional": []
     },
     "advisory-brief": {
-      "sha": "c31cf40dc3568bd5e9bfbc335758acfdfecae1bd",
+      "sha": "1861481e77a378a53ccc527c402beabe9b8a64f3",
       "files": [
         "README.md",
         "CONTRIBUTING.md",
