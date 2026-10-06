@@ -6,6 +6,10 @@ name: Deploy
 on:
   push:
     branches: [main]
+  # Pull requests (including Dependabot's) run the tests and a full build, so a broken change is
+  # visible before merging. They never deploy.
+  pull_request:
+    branches: [main]
   schedule:
     - cron: '17 5 * * *'
   workflow_dispatch: {}
@@ -39,6 +43,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
