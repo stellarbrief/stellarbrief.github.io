@@ -1,0 +1,41 @@
+---
+// Where you are among the three tools, and which view of this tool you are looking at, with a way to hop to any other without
+// going back home. Used on a tool's page and on its playground.
+import { projects, ORG } from '../data/projects.js';
+import ToolIcon from './ToolIcon.astro';
+
+interface Props {
+  current: string;
+  view: 'about' | 'playground';
+}
+const { current, view } = Astro.props;
+const tool = projects.find((p) => p.slug === current);
+---
+
+<div class="toolnav">
+  <nav aria-label="The three tools">
+    <ul class="tool-tabs">
+      {
+        projects.map((p) => (
+          <li>
+            <a href={view === 'playground' ? p.playground : `/projects/${p.slug}/`} aria-current={p.slug === current ? 'page' : undefined}>
+              <ToolIcon slug={p.slug} />
+              <span>{p.short}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+  {
+    tool && (
+      <nav aria-label={`${tool.name}: views`}>
+        <ul class="view-tabs">
+          <li><a href={`/projects/${tool.slug}/`} aria-current={view === 'about' ? 'page' : undefined}>About</a></li>
+          <li><a href={tool.playground} aria-current={view === 'playground' ? 'page' : undefined}>See it work</a></li>
+          <li><a href={`https://github.com/${ORG}/${tool.repo}`}>GitHub <span aria-hidden="true">↗</span></a></li>
+        </ul>
+      </nav>
+    )
+  }
+</div>

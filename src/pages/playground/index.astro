@@ -1,5 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import ToolIcon from '../../components/ToolIcon.astro';
 import { KINDS, KIND_MEANING } from '../../lib/provenance.js';
 import { projects } from '../../data/projects.js';
 ---
@@ -9,40 +11,48 @@ import { projects } from '../../data/projects.js';
   description="Real recorded output from the three StellarBrief tools, and the tools' own code running in your browser where that is safe. Every result is labeled with where it came from."
   path="/playground/"
 >
-  <h1>Playground</h1>
-  <p class="lede">
-    See what the tools produce without installing anything. Nothing on these pages runs a Stellar
-    network. Two of the tools need Docker, which a browser can't provide, so their pages show real recorded
-    runs and run the tools' own analysis code on them.
-  </p>
+  <PageHeader title="Playground" crumbs={[{ label: 'Playground' }]}>
+    <p class="lede">
+      See what the tools produce without installing anything. Nothing on these pages runs a Stellar
+      network. Two of the tools need Docker, which a browser can't provide, so their pages show real recorded
+      runs and run the tools' own analysis code on them.
+    </p>
+  </PageHeader>
 
-  <h2 id="labels">How to read the labels</h2>
-  <p>Every result on this site carries one of five labels, with its source and date:</p>
-  <dl>
-    {
-      KINDS.map((k) => (
-        <>
-          <dt><span class={`badge kind-${k.toLowerCase()}`}>{k}</span></dt>
-          <dd style="margin:0 0 0.75rem 0">{KIND_MEANING[k]}</dd>
-        </>
-      ))
-    }
-  </dl>
-  <p class="small">
-    The site build fails if a result has no label, so nothing can appear without saying where it came from.
-    No page here currently uses <em>Live</em>.
-  </p>
+  <div class="container">
+    <section class="block" aria-labelledby="pick-title">
+      <h2 id="pick-title">Pick a project</h2>
+      <div class="picks">
+        {
+          projects.map((p) => (
+            <a class="pick spot reveal" href={p.playground}>
+              <ToolIcon slug={p.slug} />
+              <span class="pick-name">{p.name}</span>
+              <span class="pick-line">{p.tagline}</span>
+              <span class="pick-go">Open the playground <span aria-hidden="true">→</span></span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
 
-  <h2>Pick a project</h2>
-  <div class="grid">
-    {
-      projects.map((p) => (
-        <section class="card">
-          <h3>{p.name}</h3>
-          <p>{p.tagline}</p>
-          <p class="links"><a href={p.playground}>Open the {p.name} playground</a></p>
-        </section>
-      ))
-    }
+    <section class="block reveal" aria-labelledby="labels">
+      <h2 id="labels">How to read the labels</h2>
+      <p>Every result on this site carries one of five labels, with its source and date:</p>
+      <dl class="labels">
+        {
+          KINDS.map((k) => (
+            <div class="label-card spot">
+              <dt><span class={`badge kind-${k.toLowerCase()}`}>{k}</span></dt>
+              <dd>{KIND_MEANING[k]}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <p class="small">
+        The site build fails if a result has no label, so nothing can appear without saying where it came from.
+        No page here currently uses <em>Live</em>.
+      </p>
+    </section>
   </div>
 </Base>

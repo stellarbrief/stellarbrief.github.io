@@ -1,8 +1,32 @@
 ---
 import Base from '../layouts/Base.astro';
+import PageHeader from '../components/PageHeader.astro';
+import ToolIcon from '../components/ToolIcon.astro';
+import { projects } from '../data/projects.js';
 ---
 
 <Base title="Page not found" description="This page does not exist." path="/404/">
-  <h1>Page not found</h1>
-  <p>That page doesn't exist. Try the <a href="/">home page</a>, the <a href="/playground/">playground</a>, or the <a href="https://github.com/stellarbrief">GitHub organization</a>.</p>
+  <PageHeader title="Page not found">
+    <p class="lede">That page doesn't exist, or it has moved. These are the places that do.</p>
+  </PageHeader>
+
+  <div class="container">
+    <div class="picks lost">
+      {
+        projects.map((p) => (
+          <a class="pick spot" href={`/projects/${p.slug}/`}>
+            <ToolIcon slug={p.slug} />
+            <span class="pick-name">{p.name}</span>
+            <span class="pick-line">{p.tagline}</span>
+            <span class="pick-go">About the tool <span aria-hidden="true">→</span></span>
+          </a>
+        ))
+      }
+    </div>
+    <p class="actions">
+      <a class="btn primary" href="/">Home</a>
+      <a class="btn" href="/playground/">Playground</a>
+      <a class="btn quiet" href="https://github.com/stellarbrief">GitHub organization <span aria-hidden="true">↗</span></a>
+    </p>
+  </div>
 </Base>

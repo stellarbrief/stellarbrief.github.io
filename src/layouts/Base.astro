@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { projects, ORG } from '../data/projects.js';
 
 interface Props {
   title: string;
@@ -11,12 +12,16 @@ const { title, description, path } = Astro.props;
 const site = 'https://stellarbrief.github.io';
 const canonical = new URL(path, site).href;
 const fullTitle = path === '/' ? title : `${title} | StellarBrief`;
-const nav = [
-  { href: '/', label: 'Home' },
-  { href: '/playground/', label: 'Playground' },
-  { href: '/contribute/', label: 'Contribute' },
+
+// The three tools are always one click away, under the names of what they are, then the one place that is not a tool.
+const links = [
+  ...projects.map((p) => ({
+    href: `/projects/${p.slug}/`,
+    label: p.short,
+    current: path.startsWith(`/projects/${p.slug}/`) || path.startsWith(p.playground),
+  })),
+  { href: '/playground/', label: 'Playground', current: path === '/playground/' },
 ];
-const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
 ---
 
 <!doctype html>
@@ -24,6 +29,8 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#0c1a36" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -36,28 +43,104 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
     <meta property="og:image" content={`${site}/og.png`} />
     <meta name="twitter:card" content="summary" />
   </head>
-  <body>
+  <body id="top">
+    <div class="progress" aria-hidden="true"></div>
     <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="site-header">
-      <div class="bar">
-        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28" />StellarBrief</a>
+      <div class="container bar">
+        <a class="brand" href="/">
+          <img src="/favicon.svg" alt="" width="30" height="30" />
+          <span>StellarBrief</span>
+        </a>
+
         <nav class="site-nav" aria-label="Main">
-          {nav.map((n) => <a href={n.href} aria-current={isCurrent(n.href) ? 'page' : undefined}>{n.label}</a>)}
-          <a href="https://github.com/stellarbrief">GitHub</a>
+          <ul>
+            {links.map((l) => <li><a href={l.href} aria-current={l.current ? 'page' : undefined}>{l.label}</a></li>)}
+            <li class="gh"><a href={`https://github.com/${ORG}`}>GitHub <span aria-hidden="true">↗</span></a></li>
+          </ul>
         </nav>
+
+        <details class="menu">
+          <summary><span class="burger" aria-hidden="true"></span><span>Menu</span></summary>
+          <nav aria-label="Main, in the menu">
+            <ul>
+              <li><a href="/" aria-current={path === '/' ? 'page' : undefined}>Home</a></li>
+              {links.map((l) => <li><a href={l.href} aria-current={l.current ? 'page' : undefined}>{l.label}</a></li>)}
+              <li><a href={`https://github.com/${ORG}`}>GitHub <span aria-hidden="true">↗</span></a></li>
+            </ul>
+          </nav>
+        </details>
       </div>
     </header>
+
     <main id="main">
       <slot />
     </main>
+
     <footer class="site-footer">
-      <div class="bar">
-        <p>
-          Open-source tools, one maintainer. Not affiliated with the Stellar Development Foundation, and
-          none of this is meant for production use. The repositories are the source of truth; this site
-          reflects them at pinned commits. <a href="/playground/#labels">How to read the labels on this site.</a>
+      <div class="container">
+        <div class="cols">
+          <div>
+            <p class="brand-line"><img src="/favicon.svg" alt="" width="26" height="26" /> <strong>StellarBrief</strong></p>
+            <p>
+              Open-source tools, one maintainer. Not affiliated with the Stellar Development Foundation, and none of
+              this is meant for production use. The repositories are the source of truth; this site reflects them at
+              pinned commits.
+            </p>
+          </div>
+          <nav aria-label="Tools">
+            <h2>Tools</h2>
+            <ul>
+              {projects.map((p) => <li><a href={`/projects/${p.slug}/`}>{p.name}</a></li>)}
+            </ul>
+          </nav>
+          <nav aria-label="Explore">
+            <h2>Explore</h2>
+            <ul>
+              <li><a href="/playground/">Playground</a></li>
+              <li><a href="/playground/#labels">How to read the labels</a></li>
+            </ul>
+          </nav>
+          <nav aria-label="Project">
+            <h2>Project</h2>
+            <ul>
+              <li><a href={`https://github.com/${ORG}`}>GitHub organization</a></li>
+              <li><a href={`https://github.com/${ORG}/stellarbrief.github.io`}>This site's source</a></li>
+              <li><a href={`https://github.com/${ORG}/stellarbrief.github.io/blob/main/SECURITY.md`}>Security policy</a></li>
+            </ul>
+          </nav>
+        </div>
+        <p class="end">
+          <a href="#top">Back to the top</a> &middot; Set in Inter, under the{' '}
+          <a href="/inter-OFL.txt">SIL Open Font License 1.1</a>.
         </p>
       </div>
     </footer>
+
+    <a class="to-top" href="#top"><span aria-hidden="true">↑</span> Top</a>
+
+    <script>
+      // A soft light under the pointer on cards. It only sets two numbers that the stylesheet reads.
+      document.addEventListener('pointermove', (event) => {
+        const card = (event.target as Element | null)?.closest<HTMLElement>('.spot');
+        if (card === null || card === undefined) return;
+        const box = card.getBoundingClientRect();
+        card.style.setProperty('--mx', `${event.clientX - box.left}px`);
+        card.style.setProperty('--my', `${event.clientY - box.top}px`);
+      });
+
+      // The mobile menu closes when a link in it is chosen, and when Escape is pressed.
+      const menu = document.querySelector<HTMLDetailsElement>('details.menu');
+      menu?.addEventListener('click', (event) => {
+        if ((event.target as Element).closest('a')) menu.open = false;
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && menu?.open) {
+          menu.open = false;
+          menu.querySelector('summary')?.focus();
+        }
+      });
+    </script>
   </body>
 </html>

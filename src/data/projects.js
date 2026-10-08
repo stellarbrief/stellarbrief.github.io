@@ -17,6 +17,9 @@ export const projects = [
     slug: 'upgrade-preflight',
     repo: 'upgrade-preflight',
     name: 'Upgrade Preflight',
+    short: 'Preflight',
+    persona: 'I write Soroban contracts',
+    unit: ['recorded comparison', 'recorded comparisons'],
     tagline: 'Will my Soroban contracts behave or cost differently after a protocol upgrade?',
     summary:
       'Runs your contract scenarios on two real local Stellar networks at different protocol versions and diffs the results. It reports behavior changes, breakage and cost changes, and states what it did not test.',
@@ -31,6 +34,9 @@ export const projects = [
     slug: 'upgrade-drill',
     repo: 'upgrade-drill',
     name: 'Upgrade Drill',
+    short: 'Drill',
+    persona: 'I run a validator',
+    unit: ['recorded drill', 'recorded drills'],
     tagline: 'What happens to a validator network during an upgrade vote?',
     summary:
       'Boots real stellar-core containers on your machine, runs a scripted upgrade vote with scenarios such as a laggard or a lost quorum, and reports what each node did. Local only.',
@@ -45,6 +51,9 @@ export const projects = [
     slug: 'advisory-brief',
     repo: 'advisory-brief',
     name: 'Advisory Brief',
+    short: 'Advisory',
+    persona: 'I have to explain an advisory to a team',
+    unit: ['recorded run', 'recorded runs'],
     tagline: 'What does this advisory or release mean for us?',
     summary:
       'Turns Stellar release notes and advisories into plain-language briefs for non-engineers. Each claim cites a quote that code checks against the source text, or is marked unknown when the source does not say.',

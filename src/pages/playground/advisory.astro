@@ -1,5 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import ToolNav from '../../components/ToolNav.astro';
+import NextUp from '../../components/NextUp.astro';
 import Provenance from '../../components/Provenance.astro';
 import { loadManifest, readSyncedIfPresent, shortSha } from '../../lib/synced.js';
 import { normalizeForMatch } from '../../../synced/advisory-brief/src/brief/grounding.ts';
@@ -56,12 +59,14 @@ if (recording) {
   description="A real recorded run of Advisory Brief on a real stellar-core release, showing which quotes the verifier found and what it cannot check."
   path="/playground/advisory/"
 >
-  <p class="small"><a href="/playground/">Playground</a> / Advisory Brief</p>
-  <h1>Advisory Brief</h1>
-  <p class="lede">
+  <PageHeader title="Advisory Brief" crumbs={[{ label: 'Playground', href: '/playground/' }, { label: 'Advisory Brief' }]}>
+    <p class="lede">
     Advisory Brief asks a model for a plain-language brief where each claim cites a quote (or is marked unknown),
     then checks in code that each quote really appears in the source. This page shows one real run, claim by claim.
   </p>
+  </PageHeader>
+  <div class="container">
+    <ToolNav current="advisory-brief" view="playground" />
   <div class="callout warn">
     <strong>This page does not generate briefs, and nothing here calls a model.</strong> It is one recording, made
     once. Generating a brief needs an API key, and a public page with a key could be drained, so the tool runs
@@ -94,7 +99,7 @@ if (recording) {
         <h2>Every claim, and whether its quote was found</h2>
         <p>
           <span class="badge kind-generated">Generated</span>
-          The "quote found" column was recomputed when this page was built, using the repository's own
+          The "quote found" column was recomputed when this page was built, using the repository's own{' '}
           <code>normalizeForMatch</code> (<code>src/brief/grounding.ts</code> at <code>{shortSha(sha)}</code>) against
           the recorded source and the model's raw output.
           {counts && ` ${counts.found} of ${counts.total} claims have a quote found in the source (${counts.unknown} marked unknown by the model). `}
@@ -158,4 +163,6 @@ if (recording) {
       </>
     )
   }
+    <NextUp current="advisory-brief" view="playground" />
+  </div>
 </Base>

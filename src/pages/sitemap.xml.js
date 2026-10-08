@@ -8,7 +8,6 @@ const paths = [
   '/playground/',
   ...projects.map((p) => p.playground),
   ...projects.map((p) => `/projects/${p.slug}/`),
-  '/contribute/',
 ];
 
 export function GET() {

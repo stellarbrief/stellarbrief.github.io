@@ -7,7 +7,6 @@
       "files": [
         "README.md",
         "CHANGELOG.md",
-        "CONTRIBUTING.md",
         "SECURITY.md",
         "docs/ARCHITECTURE.md",
         "docs/CI_USAGE.md",
@@ -26,7 +25,6 @@
       "files": [
         "README.md",
         "CHANGELOG.md",
-        "CONTRIBUTING.md",
         "SECURITY.md",
         "docs/ARCHITECTURE.md",
         "docs/WRITING_SCENARIOS.md",
@@ -47,7 +45,6 @@
       "sha": "9dba194a02dc666e3cba995f4c41f99b3c8a7d11",
       "files": [
         "README.md",
-        "CONTRIBUTING.md",
         "SECURITY.md",
         "docs/ARCHITECTURE.md",
         "src/brief/grounding.ts",

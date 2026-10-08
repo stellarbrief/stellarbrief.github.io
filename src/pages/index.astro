@@ -1,10 +1,17 @@
 ---
 import Base from '../layouts/Base.astro';
+import Provenance from '../components/Provenance.astro';
+import ToolIcon from '../components/ToolIcon.astro';
 import { projects, STATUS_CRITERIA, STATUS_REVIEWED, ORG } from '../data/projects.js';
 import { loadGithub, loadManifest, shortSha } from '../lib/synced.js';
 
 const github = await loadGithub();
 const manifest = await loadManifest();
+
+// How many real recorded runs each tool has to show, counted from the sample files at the pinned commit.
+const recordedCount = (repo: string): number =>
+  manifest.repos[repo].files.filter((f: string) => /^docs\/samples\/.*\.(report|recording)\.json$/.test(f)).length;
+const unitFor = (p: (typeof projects)[number], n: number): string => p.unit[n === 1 ? 0 : 1];
 ---
 
 <Base
@@ -12,77 +19,141 @@ const manifest = await loadManifest();
   description="Open-source tools for understanding, testing and communicating Stellar protocol upgrades: preflight checks for Soroban contracts, local validator upgrade drills, and plain-language advisory briefs."
   path="/"
 >
-  <h1>Open-source tooling for Stellar protocol upgrades</h1>
-  <p class="lede">
-    Three small tools for the people affected by a Stellar upgrade: contract developers, validator
-    operators, and anyone who has to explain an advisory to a team. The GitHub repositories are the
-    product. This site shows what they actually do, using real recorded runs.
-  </p>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="orbit" aria-hidden="true">
+      <svg viewBox="0 0 400 400" fill="none">
+        <ellipse class="ring" cx="200" cy="200" rx="190" ry="78" transform="rotate(-24 200 200)" />
+        <ellipse class="ring ring-2" cx="200" cy="200" rx="150" ry="58" transform="rotate(-24 200 200)" />
+        <path class="star" d="M200 112 L215 185 L288 200 L215 215 L200 288 L185 215 L112 200 L185 185 Z" />
+        <circle class="moon" cx="352" cy="146" r="9" />
+      </svg>
+    </div>
+    <div class="container">
+      <p class="eyebrow">Open source &middot; for the people an upgrade affects</p>
+      <h1 id="hero-title">Open-source tooling for Stellar protocol upgrades</h1>
+      <p class="lede">
+        Three small tools for the people affected by a Stellar upgrade: contract developers, validator operators,
+        and anyone who has to explain an advisory to a team. The GitHub repositories are the product. This site shows
+        what they actually do, using real recorded runs.
+      </p>
+      <h2 class="ask">Start with the question you have</h2>
+    </div>
+  </section>
 
-  <div class="grid">
-    {
-      projects.map((p) => {
-        const data = github.repos[p.repo];
-        return (
-          <section class="card" aria-labelledby={`card-${p.slug}`}>
-            <h2 id={`card-${p.slug}`} style="font-size:1.25rem;margin:0">{p.name}</h2>
-            <p>
-              <span class="badge status" title={STATUS_CRITERIA[p.status]}>{p.status}</span>
-              {data?.latestRelease && <span class="small"> &middot; latest release {data.latestRelease.tag}</span>}
-            </p>
-            <p><strong>{p.tagline}</strong></p>
-            <p>{p.summary}</p>
-            <p class="small">For: {p.audience}.{p.needsDocker && ' Needs Docker to run.'}</p>
-            <p class="links">
-              <a href={`/projects/${p.slug}/`}>About</a>
-              <a href={p.playground}>See it work</a>
-              <a href={`https://github.com/${ORG}/${p.repo}`}>GitHub</a>
-            </p>
-          </section>
-        );
-      })
-    }
+  <div class="container">
+    <div class="paths">
+      {
+        projects.map((p) => {
+          const data = github.repos[p.repo];
+          return (
+            <article class="path spot reveal" aria-labelledby={`path-${p.slug}`}>
+              <ToolIcon slug={p.slug} />
+              <p class="persona">{p.persona}</p>
+              <h3 id={`path-${p.slug}`}>{p.tagline}</h3>
+              <p class="tool-line">
+                <strong>{p.name}</strong>
+                <span class="badge status" title={STATUS_CRITERIA[p.status]}>{p.status}</span>
+                {data?.latestRelease && <span class="small">release {data.latestRelease.tag}</span>}
+              </p>
+              <p>{p.summary}</p>
+              <p class="small">For: {p.audience}.{p.needsDocker && ' Needs Docker to run.'}</p>
+              <p class="actions">
+                <a class="btn primary" href={p.playground}>See it work</a>
+                <a class="btn" href={`/projects/${p.slug}/`}>About</a>
+                <a class="btn quiet" href={`https://github.com/${ORG}/${p.repo}`}>GitHub <span aria-hidden="true">↗</span></a>
+              </p>
+            </article>
+          );
+        })
+      }
+    </div>
+
+    <section class="block reveal" aria-labelledby="why-title">
+      <h2 id="why-title">Why these exist</h2>
+      <ul class="why">
+        <li class="spot">
+          <strong>Contracts can change under you.</strong>
+          A protocol upgrade can change what a contract costs or whether it runs. Developers get a short window to
+          check, and no easy way to compare two protocol versions side by side.
+        </li>
+        <li class="spot">
+          <strong>A vote is hard to rehearse.</strong>
+          Validator operators need to know how an upgrade vote behaves before it matters, including when one validator
+          misses it. That is hard to rehearse without a real network.
+        </li>
+        <li class="spot">
+          <strong>A summary has to be checkable.</strong>
+          Advisories are written for node operators. Everyone downstream has to translate them under time pressure, and
+          a summary is only useful if you can check it against the source.
+        </li>
+      </ul>
+    </section>
+
+    <section class="block reveal" aria-labelledby="relate-title">
+      <h2 id="relate-title">How the tools relate</h2>
+      <p>
+        They share no code and no data. They serve different people in the same upgrade cycle.{' '}
+        <span class="badge kind-example">Example</span> A simplified timeline:
+      </p>
+      <ol class="timeline" aria-label="A simplified upgrade timeline, in three steps">
+        <li class="spot">
+          <span class="when">An announcement is published</span>
+          <p><a href="/projects/advisory-brief/">Advisory Brief</a> helps someone read it and decide who needs to act.</p>
+        </li>
+        <li class="spot">
+          <span class="when">Before the vote</span>
+          <p>Contract developers use <a href="/projects/upgrade-preflight/">Upgrade Preflight</a> to compare their contracts across the two protocol versions.</p>
+        </li>
+        <li class="spot">
+          <span class="when">Before the vote</span>
+          <p>Validator operators use <a href="/projects/upgrade-drill/">Upgrade Drill</a> to rehearse how the vote behaves on a small local network.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="block reveal" aria-labelledby="recorded-title">
+      <h2 id="recorded-title">What you can look at right now</h2>
+      <ul class="recorded">
+        {
+          projects.map((p) => {
+            const n = recordedCount(p.repo);
+            return (
+              <li class="spot">
+                <a href={p.playground}>
+                  <span class="num">{n}</span>
+                  <span class="what">{unitFor(p, n)}</span>
+                  <span class="who">{p.name} &rarr;</span>
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+      <Provenance
+        where="the count of recorded runs"
+        record={{
+          kind: 'Recorded',
+          source: 'The sample report and recording files in each repository, counted at its pinned commit',
+          date: manifest.syncedAt,
+        }}
+      />
+    </section>
+
+    <section class="block reveal" aria-labelledby="status-title">
+      <h2 id="status-title">Honest status</h2>
+      <div class="callout warn">
+        All three are <strong>Experimental</strong> (reviewed {STATUS_REVIEWED}): {STATUS_CRITERIA.Experimental} Each
+        tool's page explains its own limits.
+      </div>
+    </section>
+
+    <p class="small fineprint">
+      This page reflects commits
+      {
+        Object.entries(manifest.repos).map(([repo, m], i) => (
+          <>{i > 0 ? ', ' : ' '}<code>{repo}@{shortSha(m.sha)}</code></>
+        ))
+      }. GitHub data was fetched at build time on {github.fetchedAt.slice(0, 10)}, so it is a recording, not live.
+    </p>
   </div>
-
-  <h2>Why these exist</h2>
-  <ul>
-    <li>
-      A protocol upgrade can change what a contract costs or whether it runs. Developers get a short window
-      to check, and no easy way to compare two protocol versions side by side.
-    </li>
-    <li>
-      Validator operators need to know how an upgrade vote behaves before it matters, including when one
-      validator misses it. That is hard to rehearse without a real network.
-    </li>
-    <li>
-      Advisories are written for node operators. Everyone downstream has to translate them under time
-      pressure, and a summary is only useful if you can check it against the source.
-    </li>
-  </ul>
-
-  <h2>How the tools relate</h2>
-  <p>
-    They share no code and no data. They serve different people in the same upgrade cycle.
-    <span class="badge kind-example">Example</span> A simplified timeline:
-  </p>
-  <ol>
-    <li><strong>An announcement is published.</strong> Advisory Brief helps someone read it and decide who needs to act.</li>
-    <li><strong>Before the vote:</strong> contract developers use Upgrade Preflight to compare their contracts across the two protocol versions.</li>
-    <li><strong>Before the vote:</strong> validator operators use Upgrade Drill to rehearse how the vote behaves on a small local network.</li>
-  </ol>
-
-  <h2>Honest status</h2>
-  <p>
-    All three are <strong>Experimental</strong> (reviewed {STATUS_REVIEWED}): {STATUS_CRITERIA.Experimental} Each
-    project page explains its own limits.
-  </p>
-
-  <p class="small">
-    This page reflects commits
-    {
-      Object.entries(manifest.repos).map(([repo, m], i) => (
-        <>{i > 0 ? ', ' : ' '}<code>{repo}@{shortSha(m.sha)}</code></>
-      ))
-    }. GitHub data was fetched at build time on {github.fetchedAt.slice(0, 10)}, so it is a recording, not live.
-  </p>
 </Base>

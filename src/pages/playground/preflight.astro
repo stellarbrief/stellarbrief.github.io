@@ -1,5 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import ToolNav from '../../components/ToolNav.astro';
+import NextUp from '../../components/NextUp.astro';
 import Provenance from '../../components/Provenance.astro';
 import { fromSampleProvenance } from '../../lib/provenance.js';
 import { loadManifest, readSyncedJson, shortSha } from '../../lib/synced.js';
@@ -31,13 +34,15 @@ const data = JSON.stringify(samples).replace(/</g, '\\u003c');
   description="Real recorded protocol comparisons from Upgrade Preflight, and its own diff engine re-classifying them in your browser."
   path="/playground/preflight/"
 >
-  <p class="small"><a href="/playground/">Playground</a> / Upgrade Preflight</p>
-  <h1>Upgrade Preflight</h1>
-  <p class="lede">
+  <PageHeader title="Upgrade Preflight" crumbs={[{ label: 'Playground', href: '/playground/' }, { label: 'Upgrade Preflight' }]}>
+    <p class="lede">
     Upgrade Preflight runs the same contract calls on two real local networks at different protocol
     versions and compares the results. This page shows real reports from that, and lets you re-run the tool's
     own comparison code on them.
   </p>
+  </PageHeader>
+  <div class="container">
+    <ToolNav current="upgrade-preflight" view="playground" />
   <div class="callout warn">
     <strong>This page does not run Docker, Stellar or any contract.</strong> The networks and contracts ran
     earlier, in GitHub Actions. What happens in your browser is the diff engine, on the recorded results.
@@ -99,11 +104,13 @@ const data = JSON.stringify(samples).replace(/</g, '\\u003c');
 
   <h2>Reproduce it yourself</h2>
   <p>
-    The exact command and the workflow run that produced each report are in the provenance above. See the
+    The exact command and the workflow run that produced each report are in the provenance above. See the{' '}
     <a href="/projects/upgrade-preflight/">project page</a> for setup.
   </p>
 
   <script is:inline id="preflight-data" type="application/json" set:html={data} />
+    <NextUp current="upgrade-preflight" view="playground" />
+  </div>
 </Base>
 
 <script>
